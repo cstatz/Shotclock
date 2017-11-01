@@ -1,11 +1,11 @@
 /**
  *    10      1
  *  -----   -----
- * |  2  | |  2  |  
+ * |  2  | |  2  |
  * |1   3| |3   1|
  * |  0  | |  0  |
  *  -----o o-----
- * |     | |     | 
+ * |     | |     |
  * |6   4| |4   6|
  * |  5  | |  5  |
  *  -----   -----
@@ -14,14 +14,14 @@
 #include <SPI.h>
 #include "nRF24L01.h"
 #include <RF24.h>
-#include "printf.h"
 #include <FastLED.h>
 
 #define CE_PIN 11
 #define CS_PIN 12
-#define LED_1_PIN 7
-#define LED_10_PIN 8
-#define HORN_PIN 9
+#define GND_PIN 13
+#define LED_1_PIN A4
+#define LED_10_PIN A5
+#define HORN_PIN A3
 
 #define PIXELS_PER_ELEMENT 5
 #define ELEMENTS_PER_DIGIT 7
@@ -60,7 +60,7 @@ byte digit_10[] = {
 byte digit_1[] = {
  0b01111110,
  0b01000010,
- 0b00110111, 
+ 0b00110111,
  0b01100111,
  0b01001011,
  0b01101101,
@@ -89,23 +89,37 @@ void set_leds(CRGB * leds, byte digit, CRGB color)
 
 void setup(void)
 {
+  pinMode(GND_PIN, OUTPUT);
+  digitalWrite(GND_PIN, LOW);
+  delay(1000);
 
   Serial.begin(57600);
-  printf_begin();
-  
+  Serial.println("Start");
   pinMode(LED_1_PIN, OUTPUT);
   pinMode(LED_10_PIN, OUTPUT);
   pinMode(HORN_PIN, OUTPUT);
 
+  Serial.println("Radio:");
+
   radio.begin();
+  Serial.println("Radio: 1");
+
   radio.setPayloadSize(2);
+  Serial.println("Radio: 2");
+
   radio.openWritingPipe(pipes[1]);
   radio.openReadingPipe(1,pipes[0]);
+  Serial.println("Radio: 3");
+
   radio.setDataRate(DATARATE);
   radio.setChannel(CHANNEL);
   radio.setPALevel(RF24_PA_MIN);
+  Serial.println("Radio: 4");
+
   radio.setAutoAck(false);
   radio.printDetails();
+  Serial.println("Radio: 5");
+
   radio.startListening();
 
   // Init LED_Strips
@@ -113,12 +127,37 @@ void setup(void)
   FastLED.addLeds<LED_TYPE, LED_1_PIN, COLOR_ORDER>(leds_1, PIXELS_PER_ELEMENT*ELEMENTS_PER_DIGIT);
   FastLED.addLeds<LED_TYPE, LED_10_PIN, COLOR_ORDER>(leds_10, PIXELS_PER_ELEMENT*ELEMENTS_PER_DIGIT);
   FastLED.setCorrection( TypicalLEDStrip );
-  FastLED.clear(); 
+
+  for (int i=0; i<PIXELS_PER_ELEMENT*ELEMENTS_PER_DIGIT; i++) {
+    leds_1[i] = CRGB::Red;
+    leds_10[i] = CRGB::Red;
+  }
+  FastLED.show();
+  delay(500);
+  for (int i=0; i<PIXELS_PER_ELEMENT*ELEMENTS_PER_DIGIT; i++) {
+    leds_1[i] = CRGB::Blue;
+    leds_10[i] = CRGB::Blue;
+  }
+  FastLED.show();
+  delay(500);
+  for (int i=0; i<PIXELS_PER_ELEMENT*ELEMENTS_PER_DIGIT; i++) {
+    leds_1[i] = CRGB::Green;
+    leds_10[i] = CRGB::Green;
+  }
+  FastLED.show();
+  delay(500);
+  for (int i=0; i<PIXELS_PER_ELEMENT*ELEMENTS_PER_DIGIT; i++) {
+    leds_1[i] = CRGB::Black;
+    leds_10[i] = CRGB::Black;
+  }
+  FastLED.show();
+  FastLED.clear();
 }
 
 void loop(void)
 {
-    
+
+  Serial.println("Go");
   if ( radio.available(&pipe_num) && pipe_num == 1)
   {
     radio.read(receive_buffer, 2);
@@ -138,12 +177,12 @@ void loop(void)
       if (receive_buffer[0] == 0) {color = CRGB::Red;}
       else if (receive_buffer[0] <= 10) {color = CRGB::Orange;}
       else {color = CRGB::Green;}
-      
+
       uint8_t val_10 = receive_buffer[0] / 10;
       set_leds(leds_10, digit_10[val_10], color);
       uint8_t val_1 = receive_buffer[0] % 10;
       set_leds(leds_1, digit_1[val_1], color);
-      
+
       }
     else {
       for (uint8_t i=0; i<PIXELS_PER_ELEMENT*ELEMENTS_PER_DIGIT; i++){
@@ -151,9 +190,8 @@ void loop(void)
         leds_10[i] = CRGB::Black;
         }
       }
-      
+
     FastLED.show();
-    printf("received pipe: %d %d \n\r", receive_buffer[1], receive_buffer[0]);    
   }
 
 }

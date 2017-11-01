@@ -1,7 +1,6 @@
 #include <SPI.h>
 #include "nRF24L01.h"
 #include <RF24.h>
-#include "printf.h"
 
 #define CE_PIN 9
 #define CS_PIN 10
@@ -70,7 +69,6 @@ void setup(void)
   }
 
   Serial.begin(57600);
-  printf_begin();
 
   radio.begin();
   radio.setPayloadSize(2);
@@ -118,7 +116,6 @@ void loop(void)
 
     }
 
-    printf("received pipe: %d %d \n\r", receive_buffer[1], receive_buffer[0]);
   }
 
 }
